@@ -28,12 +28,20 @@ def get_title(url):
 	title=soup.find('title').text
 	return title
 
+#提取链接信息
+def extractUrl(href):
+	url = ''
+	pattern = re.compile(r'(http[s]?://[^&]+)&', re.U | re.M)
+	url_match = pattern.search(href)
+	if(url_match and url_match.lastindex > 0):
+		url = url_match.group(1)
+	return url 
+
 #根据链接提取信息
 def abstractPages(url):
 	length = len(user_agents)
 	index=random.randint(0,length-1)
 	user_agent = user_agents[index]
-	#print(user_agent)
 	newslist=list()
 	headers={
 		'Referer': base_url,
@@ -43,29 +51,35 @@ def abstractPages(url):
 	}
 	s=requests.session()
 	s=BeautifulSoup(s.get(url,headers=headers).content,'html.parser')
-	#print(s)
 	if s.find('div',{'id':'infoDiv'}):
-		print('糟糕，被发现了，换ip吧')
+		print('糟糕，被发现惹，换ip吧 QAQ')
 		sys.exit()
 	else:
-		news_list=s.findAll('div',{'class','g'})
-		for link in news_list:
-			href=link.find('a')['href']
-			#print(href)
-			if re.match('^http',href):
-				newsurl=href
-				#print(href)
-				try:
-					title=link.find('a',{'class':'l'}).text
-					print(title)
-				except Exception as e:
-					continue
-				abstract=link.find('div',{'class':'st'}).text.replace('\r','').replace('\n','').replace('\t','').strip()
-				searchresult=searchResult(newsurl,title,abstract)
-				newslist.append(searchresult)
-				with open('articels.csv','a') as f:
-					writer=csv.writer(f)
-					writer.writerow((newsurl,title,abstract))
+		print('开始抓取了----->>>>')
+		div=s.find('div',id='search')
+		if div!=None:
+			divs=div.findAll('div',{'class':'g'})
+			if len(divs)>0:
+				for d in divs:
+					h3=d.find('h3',{'class':'r'})
+					if h3==None:
+						continue
+					link=h3.find('a')
+					if link==None:
+						continue
+					url=link['href']
+					newsurl=extractUrl(url)
+					#print(newsurl)
+					if url=='':
+						continue
+					title=link.text
+					#print(title)
+					abstract=d.find('div',{'class':'st'}).text.replace('\r','').replace('\n','').replace('\t','').strip()
+					searchresult=searchResult(newsurl,title,abstract)
+					newslist.append(searchresult)
+					with open('articels.csv','a') as f:
+						writer=csv.writer(f)
+						writer.writerow((newsurl,title,abstract))
 	return newslist
 
 
@@ -80,11 +94,7 @@ def search(keywords,lang='en',num=result_per_page,tbm='nws'):
 		url='%s/search?hl=%s&num=%d&start=%s&q=%s&tbm=%s'%(base_url,lang,result_per_page,start,keywords,tbm)
 		print(url)
 		abstractPages(url)
-		time.sleep(5)
+		time.sleep(10)
 
 load_user_agent()
 search('hello')
-
-
-
-
